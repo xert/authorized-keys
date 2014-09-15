@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -39,7 +39,7 @@ func safestring(s string) bool {
 // Error during program init
 // print error + exit with code 2
 func initError(s string) {
-	fmt.Println(s)
+	os.Stderr.WriteString(s)
 	os.Exit(2)
 }
 
@@ -52,7 +52,7 @@ func main() {
 	const configfile = "/usr/local/etc/authorized-keys.conf"
 	configsource, err := ioutil.ReadFile(configfile)
 	if err != nil {
-		fmt.Println("Error opening config file " + configfile + ", using defaults")
+		os.Stderr.WriteString("Error opening config file " + configfile + ", using defaults\n")
 		programDir := filepath.Dir(os.Args[0])
 		config.Data = programDir + "/authorized-keys.yaml"
 		config.Log = programDir + "/authorized-keys.log"
@@ -69,7 +69,7 @@ func main() {
 		initError("error opening log file: " + err.Error())
 	}
 	defer l.Close()
-	log.SetOutput(l)
+	log.SetOutput(io.MultiWriter(l, os.Stderr))
 
 	// Username
 	username := os.Args[1]
@@ -124,5 +124,5 @@ func main() {
 	}
 
 	// Output for sshd
-	fmt.Print(strings.Join(keys, "\n"))
+	os.Stdout.WriteString(strings.Join(keys, "\n"))
 }
