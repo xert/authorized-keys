@@ -73,13 +73,13 @@ func main() {
 	// Username
 	username := os.Args[1]
 	if !safestring(username) {
-		log.Fatalln("'" + username + " is not safe string")
+		log.Fatalln("User '" + username + " is not safe string")
 	}
 
 	// Hostname (server name)
 	hostname, _ := os.Hostname()
 	if !safestring(hostname) {
-		log.Fatalln("'" + hostname + "' is not safe string")
+		log.Fatalln("Host '" + hostname + "' is not safe string")
 	}
 
 	// Data file
