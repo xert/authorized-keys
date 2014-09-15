@@ -4,7 +4,10 @@
 ## Installation
 
 Create user and group authorizator
-Install to /usr/local/bin/authorized-keys with owner root and group authorizator, permissions 0750
+
+Install to /usr/local/bin/authorized-keys
+
+Set owner root and group authorizator, permissions 0750
 
 
 
