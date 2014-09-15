@@ -79,7 +79,7 @@ func main() {
 	// Hostname (server name)
 	hostname, _ := os.Hostname()
 	if !safestring(hostname) {
-		log.Fatalln("'" + hostname + " is not safe string")
+		log.Fatalln("'" + hostname + "' is not safe string")
 	}
 
 	// Data file
