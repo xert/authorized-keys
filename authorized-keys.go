@@ -24,8 +24,6 @@ type configData struct {
 	Data string
 }
 
-var config configData
-
 // Allow only lowercase letters, dot, underscore or hyphen
 func safestring(s string) bool {
 	r, err := regexp.Compile("[-.a-z_]+")
@@ -39,7 +37,7 @@ func safestring(s string) bool {
 // Error during program init
 // print error + exit with code 2
 func initError(s string) {
-	os.Stderr.WriteString(s)
+	os.Stderr.WriteString(s + "\n")
 	os.Exit(2)
 }
 
@@ -51,6 +49,7 @@ func main() {
 	// Load config file
 	const configfile = "/usr/local/etc/authorized-keys.conf"
 	configsource, err := ioutil.ReadFile(configfile)
+	config := configData{}
 	if err != nil {
 		os.Stderr.WriteString("Error opening config file " + configfile + ", using defaults\n")
 		programDir := filepath.Dir(os.Args[0])
@@ -66,7 +65,7 @@ func main() {
 	// Open log file
 	l, err := os.OpenFile(config.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
 	if err != nil {
-		initError("error opening log file: " + err.Error())
+		initError("error opening log file: '" + config.Log + "'" + err.Error())
 	}
 	defer l.Close()
 	log.SetOutput(io.MultiWriter(l, os.Stderr))
