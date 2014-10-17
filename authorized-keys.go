@@ -46,7 +46,8 @@ func initError(s string, code int) {
 	os.Exit(code)
 }
 
-var builddate string
+var builddate = "unknown date"
+var buildversion = "unknown version"
 
 func main() {
 	usage := `Authorized Keys.
@@ -62,7 +63,7 @@ Options:
   --force-server=<server>  Force server name.
   --test                  Test mode - no logging, just print users and key fingerprints.
 `
-	arguments, err := docopt.Parse(usage, nil, true, "Authorized Keys build "+builddate, false)
+	arguments, err := docopt.Parse(usage, nil, true, "Authorized Keys "+buildversion+", build date "+builddate, false)
 
 	if err != nil {
 		initError(usage, 2)
