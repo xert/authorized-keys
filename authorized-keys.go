@@ -1,6 +1,8 @@
+// Authorized keys SSHD helper
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -10,7 +12,10 @@ import (
 
 	"path/filepath"
 
+	"crypto/md5"
+
 	"code.google.com/p/go.crypto/ssh"
+	docopt "github.com/docopt/docopt-go"
 	yaml "gopkg.in/yaml.v1"
 )
 
@@ -36,14 +41,40 @@ func safestring(s string) bool {
 
 // Error during program init
 // print error + exit with code 2
-func initError(s string) {
+func initError(s string, code int) {
 	os.Stderr.WriteString(s + "\n")
-	os.Exit(2)
+	os.Exit(code)
 }
 
+var builddate string
+
 func main() {
-	if len(os.Args) != 2 {
-		initError("Need exactly one argument - username")
+	usage := `Authorized Keys.
+
+Usage:
+  authorized-keys <user> [--force-server=<server>] [--test]
+  authorized-keys -h | --help
+  authorized-keys -v | --version
+
+Options:
+  -h --help                Show this screen.
+  -v --version             Show version.
+  --force-server=<server>  Force server name.
+  --test                  Test mode - no logging, just print users and key fingerprints.
+`
+	arguments, err := docopt.Parse(usage, nil, true, "Authorized Keys build "+builddate, false)
+
+	if err != nil {
+		initError(usage, 2)
+	}
+
+	var test = false
+	if arguments["--test"] == true {
+		test = true
+	}
+
+	if arguments["<user>"] == nil {
+		initError("No user defined", 3)
 	}
 
 	// Load config file
@@ -58,26 +89,36 @@ func main() {
 	} else {
 		err = yaml.Unmarshal(configsource, &config)
 		if err != nil {
-			initError(err.Error())
+			initError(err.Error(), 4)
 		}
 	}
 
 	// Open log file
-	l, err := os.OpenFile(config.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
-	if err != nil {
-		initError("error opening log file: '" + config.Log + "'" + err.Error())
+	if !test {
+		l, err := os.OpenFile(config.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0660)
+		if err != nil {
+			initError("error opening log file: '"+config.Log+"'"+err.Error(), 5)
+		}
+		defer l.Close()
+		log.SetOutput(io.MultiWriter(l, os.Stderr))
+	} else {
+		log.SetOutput(os.Stderr)
 	}
-	defer l.Close()
-	log.SetOutput(io.MultiWriter(l, os.Stderr))
 
 	// Username
-	username := os.Args[1]
+	username := fmt.Sprintf("%s", arguments["<user>"])
 	if !safestring(username) {
-		log.Fatalln("User '" + username + " is not safe string")
+		log.Fatalln("User '" + username + "' is not safe string")
 	}
 
 	// Hostname (server name)
-	hostname, _ := os.Hostname()
+	var hostname string
+	if arguments["--force-server"] == nil {
+		hostname, _ = os.Hostname()
+	} else {
+		hostname = fmt.Sprintf("%s", arguments["--force-server"])
+	}
+
 	if !safestring(hostname) {
 		log.Fatalln("Host '" + hostname + "' is not safe string")
 	}
@@ -85,16 +126,22 @@ func main() {
 	// Data file
 	source, err := ioutil.ReadFile(config.Data)
 	if err != nil {
-		initError("Can't read data file " + config.Data)
+		initError("Can't read data file "+config.Data, 5)
 	}
 	authorizedKeys := authorizedKeys{}
 	err = yaml.Unmarshal(source, &authorizedKeys)
 	if err != nil {
-		initError("Cannot parse yaml file " + err.Error())
+		initError("Cannot parse yaml file "+err.Error(), 6)
 	}
 
 	// Debug
 	log.Println("Requested authorized_keys for server '" + hostname + "' and user '" + username + "'")
+
+	// Find server/user
+	_, ok := authorizedKeys.Access[hostname][username]
+	if !ok {
+		log.Fatalln("Server '" + hostname + "' not found")
+	}
 
 	// Find aliases for server/user
 	users, ok := authorizedKeys.Access[hostname][username]
@@ -111,11 +158,17 @@ func main() {
 		}
 		// Validate and append each key
 		for index, key := range k {
-			_, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+			publickey, comment, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 
 			if err == nil {
 				keys = append(keys, key)
-				log.Printf("Using key %q for user %q", comment, user)
+				if test {
+					fingerprint := fmt.Sprintf("%x", md5.Sum(publickey.Marshal()))
+					log.Printf("Using key %q for user %q. Fingerprint: %s", comment, user, formatFingerPrint(fingerprint))
+				} else {
+					log.Printf("Using key %q for user %q", comment, user)
+				}
+
 			} else {
 				log.Printf("Skipping key %d for user %q", index, user)
 			}
@@ -123,5 +176,15 @@ func main() {
 	}
 
 	// Output for sshd
-	os.Stdout.WriteString(strings.Join(keys, "\n"))
+	if !test {
+		os.Stdout.WriteString(strings.Join(keys, "\n"))
+	}
+}
+
+func formatFingerPrint(f string) string {
+	var fprint []string
+	for i := 0; i < len(f); i = i + 2 {
+		fprint = append(fprint, f[i:i+2])
+	}
+	return strings.Join(fprint, ":")
 }
