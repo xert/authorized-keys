@@ -14,8 +14,8 @@ import (
 
 	"crypto/md5"
 
-	"code.google.com/p/go.crypto/ssh"
 	docopt "github.com/docopt/docopt-go"
+	"golang.org/x/crypto/ssh"
 	yaml "gopkg.in/yaml.v1"
 )
 
@@ -31,7 +31,11 @@ type configData struct {
 
 // Allow only lowercase letters, dot, underscore or hyphen
 func safestring(s string) bool {
-	r, err := regexp.Compile("[-.a-z_]+")
+	if len(s) > 16 {
+		return false
+	}
+
+	r, err := regexp.Compile("^[-.a-z_]+$")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -61,7 +65,7 @@ Options:
   -h --help                Show this screen.
   -v --version             Show version.
   --force-server=<server>  Force server name.
-  --test                  Test mode - no logging, just print users and key fingerprints.
+  --test                   Test mode - no logging, just print users and key fingerprints.
 `
 	arguments, err := docopt.Parse(usage, nil, true, "Authorized Keys "+buildversion+", build date "+builddate, false)
 
