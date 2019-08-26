@@ -31,7 +31,7 @@ type configData struct {
 
 // Allow only lowercase letters, dot, underscore or hyphen
 func safestring(s string) bool {
-	if len(s) > 16 {
+	if len(s) > 64 {
 		return false
 	}
 
