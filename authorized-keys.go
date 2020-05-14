@@ -35,7 +35,7 @@ func safestring(s string) bool {
 		return false
 	}
 
-	r, err := regexp.Compile("^[-.a-z_]+$")
+	r, err := regexp.Compile("^[-.a-z0-9_]+$")
 	if err != nil {
 		log.Fatalln(err)
 	}
